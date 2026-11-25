@@ -10,7 +10,7 @@ SHELL := bash
 # cargo-audit is not installed locally). The skip is printed, never silent.
 SKIP_AUDIT ?= 0
 
-.PHONY: all help build release-build optimize abi check-abi test-abi test test-all fmt lint lint-js check-node-versions check check-docs check-branch-protection check-branch-protection-remote check-storage-keys check-deploy-scripts check-test-modules check-reachability \
+.PHONY: all help build release-build optimize abi check-abi test-abi test test-all fmt lint lint-js check-node-versions check-stellar-version check check-docs check-branch-protection check-branch-protection-remote check-storage-keys check-deploy-scripts check-test-modules check-reachability check-release-manifest \
         size size-check doc audit bench deploy e2e clean fuzz-amm fuzz-amm-nightly fuzz-cl check-doc-commands test-doc-commands
 
 # Bare `make` explains itself instead of building.
@@ -87,6 +87,10 @@ lint-js: ## ESLint every JS/TS workspace (run `npm ci` at the root and in each w
 check-node-versions: ## Verify every JS package's @types/node and engines.node match .nvmrc
 	node scripts/check_node_versions.mjs
 
+check-stellar-version: ## Verify workflow stellar-cli action pins match .stellar-version
+	node scripts/check_stellar_version.mjs
+	node --test scripts/check_stellar_version.test.mjs
+
 check-docs: ## Verify docs/error-codes.md matches #[contracterror] enums
 	bash scripts/check_error_docs.sh
 
@@ -109,6 +113,9 @@ check-reachability: ## Fail if a module under a package's src/ is not reachable 
 	node scripts/check_reachability.mjs
 	node --test scripts/check_reachability.test.mjs
 
+check-release-manifest: ## Run the release manifest and artifact-set regression suite
+	bash scripts/release_manifest.test.sh
+
 size: ## Print a WASM size report for all built contracts
 	bash scripts/size_report.sh
 
@@ -127,7 +134,7 @@ audit: ## Run a security audit of dependencies (cargo install cargo-audit if mis
 
 # `check` mirrors the gates in .github/workflows/ci.yml. Fast checks run first.
 # If you add a CI gate that has a make target, add it here in the same PR.
-check: fmt lint check-node-versions check-abi test-abi check-doc-commands test-doc-commands check-docs check-branch-protection check-storage-keys check-deploy-scripts check-test-modules check-reachability size-check test doc $(if $(filter 0,$(SKIP_AUDIT)),audit) ## Run the checks CI enforces before pushing (SKIP_AUDIT=1 skips audit)
+check: fmt lint check-node-versions check-stellar-version check-abi test-abi check-doc-commands test-doc-commands check-docs check-branch-protection check-storage-keys check-deploy-scripts check-test-modules check-reachability size-check test doc $(if $(filter 0,$(SKIP_AUDIT)),audit) ## Run the checks CI enforces before pushing (SKIP_AUDIT=1 skips audit)
 	@if [ "$(SKIP_AUDIT)" != "0" ]; then echo "note: SKIP_AUDIT=$(SKIP_AUDIT) — dependency audit was skipped"; fi
 
 bench: build ## Run hot-path benchmarks against the optimized pool WASM (what CI measures)
